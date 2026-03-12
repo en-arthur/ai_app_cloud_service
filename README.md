@@ -1,6 +1,26 @@
 # WorkersCraft CloudService
 
-Backend service for generated apps with authentication, storage, and file management.
+**Backend API service** for generated apps with authentication, storage, and file management.
+
+## Architecture
+
+```
+WorkersCraft Platform (generates apps)
+  └─ Generates frontend code with SDK
+  └─ Calls CloudService to register app
+  └─ Injects SDK with app_id into generated code
+
+CloudService (this repo - backend API)
+  └─ Provides REST API for all generated apps
+  └─ Handles auth, storage, files
+  └─ Multi-tenant isolation
+
+Generated Apps (user's apps)
+  └─ Include SDK (from WorkersCraft)
+  └─ Call CloudService API for backend features
+```
+
+**Note:** The SDK template lives in WorkersCraft, not here. CloudService only provides the API endpoints.
 
 ## Features
 
