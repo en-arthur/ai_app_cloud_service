@@ -68,6 +68,22 @@ class FileService:
         ).first()
     
     @staticmethod
+    def get_all_by_app(db: Session, app_id: uuid.UUID) -> List[File]:
+        """Get all files for an app (admin)"""
+        return db.query(File).filter(File.app_id == app_id).order_by(File.created_at.desc()).all()
+
+    @staticmethod
+    def delete_by_id(db: Session, app_id: uuid.UUID, file_id: uuid.UUID) -> bool:
+        """Delete file by id (admin)"""
+        file_record = db.query(File).filter(File.id == file_id, File.app_id == app_id).first()
+        if not file_record:
+            return False
+        r2_service.delete_file(file_record.r2_key)
+        db.delete(file_record)
+        db.commit()
+        return True
+
+    @staticmethod
     def delete_file(db: Session, app_id: uuid.UUID, user_id: uuid.UUID, file_id: uuid.UUID) -> bool:
         """Delete file from R2 and database"""
         file_record = FileService.get_file(db, app_id, user_id, file_id)

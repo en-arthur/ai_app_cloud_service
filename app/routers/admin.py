@@ -5,6 +5,7 @@ from app.database import get_db
 from app.services.app_service import AppService
 from app.services.auth_service import AuthService
 from app.services.storage_service import StorageService
+from app.services.file_service import FileService
 from app.middleware.auth import security, verify_admin_token
 from app.utils.jwt import create_admin_token
 from app.utils.errors import error_response
@@ -83,4 +84,31 @@ async def delete_record(
     success = StorageService.delete_by_id(db, app_id, record_id)
     if not success:
         raise HTTPException(status_code=404, detail=error_response("NOT_FOUND", "Record not found"))
+    return {"success": True}
+
+
+@router.get("/apps/{app_id}/files")
+async def list_files(
+    app_id: uuid.UUID,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    """List all files for an app"""
+    await verify_admin_token(app_id, credentials)
+    files = FileService.get_all_by_app(db, app_id)
+    return {"files": [{"id": f.id, "user_id": f.user_id, "filename": f.filename, "mime_type": f.mime_type, "size_bytes": f.size_bytes, "url": f.url, "created_at": f.created_at} for f in files]}
+
+
+@router.delete("/apps/{app_id}/files/{file_id}")
+async def delete_file(
+    app_id: uuid.UUID,
+    file_id: uuid.UUID,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    """Delete a file"""
+    await verify_admin_token(app_id, credentials)
+    success = FileService.delete_by_id(db, app_id, file_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=error_response("NOT_FOUND", "File not found"))
     return {"success": True}
