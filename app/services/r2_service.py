@@ -6,16 +6,23 @@ from typing import BinaryIO, Optional
 
 class R2Service:
     def __init__(self):
-        """Initialize R2 client using boto3 with S3-compatible API"""
-        self.client = boto3.client(
-            's3',
-            endpoint_url=settings.r2_endpoint,
-            aws_access_key_id=settings.r2_access_key_id,
-            aws_secret_access_key=settings.r2_secret_access_key,
-            region_name='auto'
-        )
+        self._client = None
         self.bucket = settings.r2_bucket_name
         self.public_url = settings.r2_public_url
+
+    @property
+    def client(self):
+        if self._client is None:
+            if not settings.r2_endpoint:
+                raise Exception("R2 is not configured. Set R2_ENDPOINT and related env vars.")
+            self._client = boto3.client(
+                's3',
+                endpoint_url=settings.r2_endpoint,
+                aws_access_key_id=settings.r2_access_key_id,
+                aws_secret_access_key=settings.r2_secret_access_key,
+                region_name='auto'
+            )
+        return self._client
     
     def upload_file(
         self, 
