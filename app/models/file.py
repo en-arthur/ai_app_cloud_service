@@ -15,7 +15,7 @@ class File(Base):
     mime_type = Column(String(100))
     size_bytes = Column(BigInteger)
     url = Column(String(500))
-    metadata = Column(JSONB)
+    file_metadata = Column('metadata', JSONB)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     __table_args__ = (
