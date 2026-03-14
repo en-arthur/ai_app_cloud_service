@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.routers import apps, auth, storage, files
+from app.routers import apps, auth, storage, files, admin
 
 app = FastAPI(
     title="WorkersCraft CloudService",
@@ -23,6 +23,7 @@ app.include_router(apps.router)
 app.include_router(auth.router)
 app.include_router(storage.router)
 app.include_router(files.router)
+app.include_router(admin.router)
 
 @app.get("/")
 async def root():

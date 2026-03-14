@@ -4,7 +4,7 @@ from app.models.refresh_token import RefreshToken
 from app.utils.password import hash_password, verify_password
 from app.utils.jwt import create_access_token, create_refresh_token, decode_token, get_token_expiry
 from datetime import datetime, timedelta
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 import uuid
 import hashlib
 
@@ -146,6 +146,11 @@ class AuthService:
         db.commit()
         return True
     
+    @staticmethod
+    def get_users_by_app(db: Session, app_id: uuid.UUID) -> List[User]:
+        """Get all users for an app"""
+        return db.query(User).filter(User.app_id == app_id).order_by(User.created_at.desc()).all()
+
     @staticmethod
     def delete_user(db: Session, user_id: uuid.UUID) -> bool:
         """Soft delete user"""

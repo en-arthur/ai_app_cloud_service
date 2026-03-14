@@ -95,6 +95,24 @@ class StorageService:
         return storage_items
     
     @staticmethod
+    def get_all_by_app(db: Session, app_id: uuid.UUID, collection: str = None) -> List[Storage]:
+        """Get all storage records for an app (admin)"""
+        query = db.query(Storage).filter(Storage.app_id == app_id)
+        if collection:
+            query = query.filter(Storage.collection == collection)
+        return query.order_by(Storage.created_at.desc()).all()
+
+    @staticmethod
+    def delete_by_id(db: Session, app_id: uuid.UUID, item_id: uuid.UUID) -> bool:
+        """Delete a storage record by id (admin)"""
+        item = db.query(Storage).filter(Storage.id == item_id, Storage.app_id == app_id).first()
+        if not item:
+            return False
+        db.delete(item)
+        db.commit()
+        return True
+
+    @staticmethod
     def batch_delete(db: Session, app_id: uuid.UUID, user_id: uuid.UUID, collection: str, item_ids: List[uuid.UUID]) -> int:
         """Delete multiple items at once"""
         deleted = db.query(Storage).filter(

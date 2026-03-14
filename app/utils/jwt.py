@@ -18,6 +18,13 @@ def create_refresh_token(data: dict) -> str:
     to_encode.update({"exp": expire, "type": "refresh"})
     return jwt.encode(to_encode, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
+def create_admin_token(app_id: str, owner_id: str) -> str:
+    """Create long-lived admin JWT token for app owner"""
+    to_encode = {"app_id": app_id, "owner_id": owner_id}
+    expire = datetime.utcnow() + timedelta(days=365)
+    to_encode.update({"exp": expire, "type": "admin"})
+    return jwt.encode(to_encode, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+
 def decode_token(token: str) -> Optional[dict]:
     """Decode and verify JWT token"""
     try:

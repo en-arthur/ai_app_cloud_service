@@ -74,3 +74,25 @@ async def get_current_user(
         "app_id": uuid.UUID(payload["app_id"]),
         "email": payload["email"]
     }
+
+async def verify_admin_token(
+    app_id: uuid.UUID,
+    credentials: HTTPAuthorizationCredentials
+) -> dict:
+    """Verify admin JWT token for app owner"""
+    token = credentials.credentials
+    payload = decode_token(token)
+
+    if not payload or payload.get("type") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=error_response("INVALID_ADMIN_TOKEN", "Invalid or expired admin token")
+        )
+
+    if uuid.UUID(payload.get("app_id", "")) != app_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_response("APP_MISMATCH", "Admin token does not belong to this app")
+        )
+
+    return {"app_id": uuid.UUID(payload["app_id"]), "owner_id": payload["owner_id"]}
