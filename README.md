@@ -1,102 +1,133 @@
 # WorkersCraft CloudService
 
-**Backend API service** for generated apps with authentication, storage, and file management.
+**Backend API service** for AI-generated apps — provides authentication, storage, and file management out of the box.
 
-## Architecture
+## How It Works
 
 ```
-WorkersCraft Platform (generates apps)
-  └─ Generates frontend code with SDK
-  └─ Calls CloudService to register app
-  └─ Injects SDK with app_id into generated code
+WorkersCraft Platform
+  └─ User generates an app with backend enabled
+  └─ Calls /api/apps/register → gets app_id
+  └─ Injects SDK with app_id into the generated app code
 
-CloudService (this repo - backend API)
-  └─ Provides REST API for all generated apps
-  └─ Handles auth, storage, files
-  └─ Multi-tenant isolation
+CloudService (this repo)
+  └─ Multi-tenant REST API
+  └─ Each app is isolated by app_id
+  └─ Each user's data is isolated within their app
 
-Generated Apps (user's apps)
-  └─ Include SDK (from WorkersCraft)
-  └─ Call CloudService API for backend features
+Generated App (running in browser)
+  └─ Uses injected SDK to call CloudService
+  └─ Auth, storage, file uploads — all handled
 ```
-
-**Note:** The SDK template lives in WorkersCraft, not here. CloudService only provides the API endpoints.
 
 ## Features
 
-- 🔐 JWT Authentication with refresh tokens
-- 💾 Generic JSONB storage (any data structure)
-- 📁 File upload to Cloudflare R2
-- 🏢 Multi-tenant isolation (app-level)
+- 🔐 JWT auth with refresh tokens (register, login, logout)
+- 💾 Generic JSONB storage (store any data structure)
+- 📁 File upload/download via Cloudflare R2
+- 🏢 Multi-tenant isolation per app
 - 👤 User-level data isolation
 
 ## Setup
 
-### 1. Install Dependencies
+### 1. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Configure Environment
+### 2. Configure environment
 
 ```bash
 cp .env.example .env
-# Edit .env with your database and R2 credentials
 ```
 
-### 3. Setup Database
+Fill in `.env`:
+
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `JWT_SECRET` | Random secret key for signing tokens |
+| `R2_ENDPOINT` | Cloudflare R2 endpoint URL |
+| `R2_ACCESS_KEY_ID` | R2 access key |
+| `R2_SECRET_ACCESS_KEY` | R2 secret key |
+| `R2_BUCKET_NAME` | R2 bucket name |
+| `R2_PUBLIC_URL` | Public URL for serving files |
+| `CORS_ORIGINS` | Comma-separated allowed origins (use `*` for dev) |
+
+### 3. Set up the database
 
 ```bash
-# Create PostgreSQL database
+# Create the database
 createdb cloudservice
 
 # Run migrations
 alembic upgrade head
 ```
 
-### 4. Run Server
+### 4. Run the server
 
 ```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Server will be available at: http://localhost:8000
+- API: http://localhost:8000
+- Interactive docs: http://localhost:8000/docs
 
-API docs: http://localhost:8000/docs
+---
 
-## API Endpoints
+## API Reference
 
-### App Registration
+### Apps
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/apps/register` | Register a new app (called by WorkersCraft) |
+| GET | `/api/apps/{app_id}` | Get app details |
+| GET | `/api/apps/owner/{owner_id}` | List all apps for an owner |
+| DELETE | `/api/apps/{app_id}` | Deactivate an app |
 
-```bash
-POST /api/apps/register
-Body: { "project_id": "uuid", "name": "My App", "owner_id": "uuid" }
-Returns: { "app_id": "uuid" }
-```
+### Auth (per app)
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/auth/register` | Register a user in an app |
+| POST | `/api/auth/login` | Login and get tokens |
+| POST | `/api/auth/refresh` | Refresh access token |
+| POST | `/api/auth/logout` | Logout (revoke refresh token) |
+| GET | `/api/auth/me` | Get current user |
 
-### Health Check
+### Storage (per app, per user)
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/storage/{collection}` | Create a record |
+| GET | `/api/storage/{collection}` | List records |
+| GET | `/api/storage/{collection}/{id}` | Get a record |
+| PUT | `/api/storage/{collection}/{id}` | Update a record |
+| DELETE | `/api/storage/{collection}/{id}` | Delete a record |
 
-```bash
-GET /health
-Returns: { "status": "healthy" }
-```
+### Files (per app, per user)
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/files/upload` | Upload a file to R2 |
+| GET | `/api/files` | List files |
+| DELETE | `/api/files/{file_id}` | Delete a file |
+
+---
 
 ## Development
 
-### Create Migration
+### Create a migration
 
 ```bash
-alembic revision --autogenerate -m "description"
+alembic revision --autogenerate -m "your description"
 ```
 
-### Apply Migrations
+### Apply migrations
 
 ```bash
 alembic upgrade head
 ```
 
-### Rollback Migration
+### Rollback
 
 ```bash
 alembic downgrade -1
@@ -106,21 +137,14 @@ alembic downgrade -1
 
 ```
 app/
-├── main.py              # FastAPI app
-├── config.py            # Configuration
-├── database.py          # Database connection
-├── models/              # SQLAlchemy models
-├── routers/             # API routes
-├── services/            # Business logic
-├── middleware/          # Auth middleware
-├── schemas/             # Pydantic schemas
-└── utils/               # Utilities
+├── main.py           # FastAPI app + CORS
+├── config.py         # Settings from .env
+├── database.py       # DB session
+├── models/           # SQLAlchemy models
+├── routers/          # Route handlers
+├── services/         # Business logic
+├── schemas/          # Pydantic schemas
+├── middleware/       # JWT auth middleware
+└── utils/            # JWT helpers, errors, password hashing
+alembic/              # DB migrations
 ```
-
-## Next Steps
-
-- [ ] Phase 3: Authentication with JWT
-- [ ] Phase 4: Storage API (CRUD)
-- [ ] Phase 5: File Upload (R2)
-- [ ] Phase 6: SDK Generation
-- [ ] Phase 7: WorkersCraft Integration
