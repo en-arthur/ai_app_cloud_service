@@ -1,9 +1,48 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from app.models.storage import Storage
+from app.models.file import File
+from app.services.r2_service import r2_service
 from typing import List, Optional
 import uuid
 from datetime import datetime
+import re
+
+# UUID pattern to detect file IDs embedded in URLs or data values
+_UUID_RE = re.compile(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', re.IGNORECASE)
+
+def _extract_uuids(value) -> set:
+    """Recursively extract all UUID strings from a JSONB value."""
+    found = set()
+    if isinstance(value, str):
+        found.update(_UUID_RE.findall(value))
+    elif isinstance(value, dict):
+        for v in value.values():
+            found.update(_extract_uuids(v))
+    elif isinstance(value, list):
+        for v in value:
+            found.update(_extract_uuids(v))
+    return found
+
+def _cascade_delete_files(db: Session, app_id: uuid.UUID, data: dict):
+    """Delete any files referenced in a storage record's data."""
+    candidate_ids = _extract_uuids(data)
+    if not candidate_ids:
+        return
+    try:
+        parsed = [uuid.UUID(uid) for uid in candidate_ids]
+    except ValueError:
+        return
+    files = db.query(File).filter(File.id.in_(parsed), File.app_id == app_id).all()
+    for f in files:
+        try:
+            r2_service.delete_file(f.r2_key)
+        except Exception:
+            pass
+        db.delete(f)
+    if files:
+        db.flush()
+
 
 class StorageService:
     @staticmethod
@@ -61,12 +100,11 @@ class StorageService:
     
     @staticmethod
     def delete(db: Session, app_id: uuid.UUID, user_id: uuid.UUID, collection: str, item_id: uuid.UUID) -> bool:
-        """Delete an item"""
+        """Delete an item and cascade-delete any referenced files."""
         item = StorageService.get(db, app_id, user_id, collection, item_id)
-        
         if not item:
             return False
-        
+        _cascade_delete_files(db, app_id, item.data or {})
         db.delete(item)
         db.commit()
         return True
@@ -104,10 +142,11 @@ class StorageService:
 
     @staticmethod
     def delete_by_id(db: Session, app_id: uuid.UUID, item_id: uuid.UUID) -> bool:
-        """Delete a storage record by id (admin)"""
+        """Delete a storage record by id (admin) and cascade-delete any referenced files."""
         item = db.query(Storage).filter(Storage.id == item_id, Storage.app_id == app_id).first()
         if not item:
             return False
+        _cascade_delete_files(db, app_id, item.data or {})
         db.delete(item)
         db.commit()
         return True
