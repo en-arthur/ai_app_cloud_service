@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -9,7 +9,7 @@ from app.schemas.storage import (
 from app.services.storage_service import StorageService
 from app.middleware.auth import security, get_current_user
 from app.utils.errors import error_response
-from typing import List
+from typing import List, Optional
 import uuid
 
 router = APIRouter(prefix="/api/storage", tags=["storage"])
@@ -40,18 +40,30 @@ async def list_items(
     collection: str,
     request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    filter_field: Optional[str] = Query(None, description="Field name to filter by"),
+    filter_value: Optional[str] = Query(None, description="Value to filter by"),
+    sort: Optional[str] = Query(None, description="Field to sort by"),
+    order: Optional[str] = Query('desc', description="Sort order: asc or desc"),
+    limit: Optional[int] = Query(None, description="Max number of results"),
+    offset: Optional[int] = Query(0, description="Number of results to skip"),
 ):
-    """List all items in a collection"""
+    """List items in a collection with optional filtering, sorting and pagination"""
     current_user = await get_current_user(request, credentials)
-    
+
     items = StorageService.list(
         db,
         current_user["app_id"],
         current_user["user_id"],
-        collection
+        collection,
+        filter_field=filter_field,
+        filter_value=filter_value,
+        sort_field=sort,
+        sort_order=order,
+        limit=limit,
+        offset=offset
     )
-    
+
     return items
 
 @router.get("/{collection}/{item_id}", response_model=StorageResponse)

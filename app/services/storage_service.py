@@ -62,15 +62,38 @@ class StorageService:
         return item
     
     @staticmethod
-    def list(db: Session, app_id: uuid.UUID, user_id: uuid.UUID, collection: str) -> List[Storage]:
-        """List all items in a collection for a user"""
-        return db.query(Storage).filter(
+    def list(db: Session, app_id: uuid.UUID, user_id: uuid.UUID, collection: str,
+             filter_field: str = None, filter_value: str = None,
+             sort_field: str = None, sort_order: str = 'desc',
+             limit: int = None, offset: int = 0) -> List[Storage]:
+        """List items in a collection with optional filtering, sorting and pagination"""
+        query = db.query(Storage).filter(
             and_(
                 Storage.app_id == app_id,
                 Storage.user_id == user_id,
                 Storage.collection == collection
             )
-        ).order_by(Storage.created_at.desc()).all()
+        )
+
+        # Filter by JSON field: data->>'field' = 'value'
+        if filter_field and filter_value is not None:
+            query = query.filter(
+                Storage.data[filter_field].astext == str(filter_value)
+            )
+
+        # Sort by JSON field or created_at
+        if sort_field:
+            col = Storage.data[sort_field].astext
+            query = query.order_by(col.asc() if sort_order == 'asc' else col.desc())
+        else:
+            query = query.order_by(Storage.created_at.desc() if sort_order == 'desc' else Storage.created_at.asc())
+
+        if offset:
+            query = query.offset(offset)
+        if limit:
+            query = query.limit(limit)
+
+        return query.all()
     
     @staticmethod
     def get(db: Session, app_id: uuid.UUID, user_id: uuid.UUID, collection: str, item_id: uuid.UUID) -> Optional[Storage]:

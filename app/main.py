@@ -4,7 +4,7 @@ from app.config import settings
 from app.routers import apps, auth, storage, files, admin
 
 app = FastAPI(
-    title="WorkersCraft CloudService",
+    title="WorkersCraft AI CloudService",
     description="Backend service for generated apps",
     version="1.0.0"
 )
@@ -28,7 +28,7 @@ app.include_router(admin.router)
 @app.get("/")
 async def root():
     return {
-        "service": "WorkersCraft CloudService",
+        "service": "WorkersCraft AI CloudService",
         "version": "1.0.0",
         "status": "running"
     }
