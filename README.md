@@ -1,4 +1,4 @@
-# WorkersCraft CloudService
+# AI App CloudService
 
 **Backend API service** for AI-generated apps — provides authentication, storage, and file management out of the box.
 
